@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CLASSIFIED — 기밀 해제</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+
+  :root {
+    --cream: #f5f0e8;
+    --black: #0a0a0a;
+    --purple: #6b21e8;
+    --purple-dim: #3b1278;
+    --glitch1: #a855f7;
+    --glitch2: #06b6d4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+
+  body {
+    background: var(--black);
+    width: 100vw;
+    height: 100dvh;
+    overflow: hidden;
+    font-family: 'Noto Sans KR', sans-serif;
+    user-select: none;
+  }
+
+  /* ── 캐릭터 레이어 (맨 아래) ── */
+  #character-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 0;
+    background: var(--black);
+  }
+
+  #char-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  #char-img.visible { opacity: 1; }
+
+  /* 프로필 카드 */
+  #profile-card {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.98) 60%, transparent);
+    padding: 40px 28px 48px;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 5;
+  }
+
+  #profile-card.revealed {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .profile-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--purple);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .profile-name {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--cream);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .profile-divider {
+    width: 40px;
+    height: 2px;
+    background: var(--purple);
+    margin-bottom: 20px;
+  }
+
+  .profile-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .profile-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--purple);
+    letter-spacing: 2px;
+    min-width: 52px;
+    flex-shrink: 0;
+  }
+
+  .profile-value {
+    font-size: 13px;
+    color: var(--cream);
+    opacity: 0.9;
+    line-height: 1.4;
+  }
+
+  /* ── 오염 캔버스 레이어 ── */
+  #noise-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    cursor: crosshair;
+  }
+
+  /* ── 글리치 오버레이 ── */
+  #glitch-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .glitch-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--glitch1);
+    opacity: 0;
+    animation: glitch-scan 4s infinite;
+  }
+
+  .glitch-line:nth-child(2) {
+    background: var(--glitch2);
+    animation-delay: 1.3s;
+    animation-duration: 3.2s;
+  }
+
+  .glitch-line:nth-child(3) {
+    background: var(--purple);
+    animation-delay: 2.1s;
+    animation-duration: 5s;
+  }
+
+  @keyframes glitch-scan {
+    0%   { top: -2px; opacity: 0; }
+    5%   { opacity: 0.8; }
+    95%  { opacity: 0.4; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* ── 힌트 텍스트 ── */
+  #hint {
+    position: absolute;
+    bottom: 52px;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 20;
+    pointer-events: none;
+    animation: hint-pulse 2.5s ease-in-out infinite;
+    transition: opacity 0.5s;
+  }
+
+  #hint span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--cream);
+    letter-spacing: 3px;
+    opacity: 0.6;
+    text-transform: uppercase;
+  }
+
+  @keyframes hint-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  #hint.hidden { opacity: 0; }
+
+  /* ── 완료 메시지 ── */
+  #complete-msg {
+    position: absolute;
+    top: 28px;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+
+  #complete-msg.show { opacity: 1; }
+
+  #complete-msg span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--purple);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  /* 터치 리플 */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--glitch1);
+    pointer-events: none;
+    z-index: 15;
+    animation: ripple-out 0.4s ease-out forwards;
+  }
+
+  @keyframes ripple-out {
+    from { width: 0; height: 0; opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+    to   { width: 80px; height: 80px; opacity: 0; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* 노 데이터 상태 */
+  #no-data {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 99;
+    background: var(--black);
+  }
+
+  #no-data p {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--purple);
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-align: center;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<!-- 노 데이터 -->
+<div id="no-data">
+  <p>[ NO DATA ]<br><br>에디터에서 캐릭터를<br>설정해주세요.</p>
+</div>
+
+<!-- 캐릭터 레이어 -->
+<div id="character-layer">
+  <img id="char-img" src="" alt="character">
+  <div id="profile-card">
+    <div class="profile-tag">— CLASSIFIED FILE —</div>
+    <div class="profile-name" id="p-name">???</div>
+    <div class="profile-divider"></div>
+    <div class="profile-row"><span class="profile-label">AFFIL</span><span class="profile-value" id="p-affil">—</span></div>
+    <div class="profile-row"><span class="profile-label">CODE</span><span class="profile-value" id="p-code">—</span></div>
+    <div class="profile-row"><span class="profile-label">TRAIT</span><span class="profile-value" id="p-trait">—</span></div>
+  </div>
+</div>
+
+<!-- 글리치 오버레이 -->
+<div id="glitch-overlay">
+  <div class="glitch-line"></div>
+  <div class="glitch-line"></div>
+  <div class="glitch-line"></div>
+</div>
+
+<!-- 노이즈 캔버스 -->
+<canvas id="noise-canvas"></canvas>
+
+<!-- 힌트 -->
+<div id="hint"><span>touch to reveal</span></div>
+
+<!-- 완료 -->
+<div id="complete-msg"><span>[ 기밀 해제 완료 ]</span></div>
+
+<script>
+(function() {
+  // ── 데이터 로드 ──
+  function getParam(key) {
+    const p = new URLSearchParams(location.search);
+    return p.get(key);
+  }
+
+  function loadData() {
+    const raw = getParam('d');
+    if (!raw) {
+      // localStorage fallback (preview mode)
+      const local = localStorage.getItem('char_preview');
+      if (local) return JSON.parse(local);
+      return null;
+    }
+    try { return JSON.parse(decodeURIComponent(atob(raw))); } catch(e) { return null; }
+  }
+
+  const data = loadData();
+
+  if (!data) {
+    document.getElementById('no-data').style.display = 'flex';
+    return;
+  }
+
+  // 프로필 삽입
+  if (data.img) {
+    const img = document.getElementById('char-img');
+    img.src = data.img;
+    img.classList.add('visible');
+  }
+  document.getElementById('p-name').textContent  = data.name  || '???';
+  document.getElementById('p-affil').textContent = data.affil || '—';
+  document.getElementById('p-code').textContent  = data.code  || '—';
+  document.getElementById('p-trait').textContent = data.trait || '—';
+
+  // ── 캔버스 설정 ──
+  const canvas = document.getElementById('noise-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  let revealed = 0;
+  let totalPixels = 0;
+  let isDone = false;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    totalPixels = W * H;
+    drawNoise();
+  }
+
+  // 노이즈 타일 (오프스크린)
+  let noiseTile;
+  function makeNoiseTile(w, h) {
+    const oc = document.createElement('canvas');
+    oc.width = w; oc.height = h;
+    const oc2 = oc.getContext('2d');
+    const id = oc2.createImageData(w, h);
+    const d = id.data;
+    const purples = [[107,33,232],[168,85,247],[59,18,120],[30,10,60],[245,240,232]];
+    for (let i = 0; i < d.length; i += 4) {
+      const r = Math.random();
+      if (r < 0.05) {
+        // glitch color stripe
+        const c = purples[Math.floor(Math.random() * purples.length)];
+        d[i]=c[0]; d[i+1]=c[1]; d[i+2]=c[2]; d[i+3]=255;
+      } else {
+        const v = Math.floor(Math.random() * 40);
+        d[i]=v; d[i+1]=v; d[i+2]=v + Math.floor(Math.random()*20); d[i+3]=255;
+      }
+    }
+    oc2.putImageData(id, 0, 0);
+    return oc;
+  }
+
+  function drawNoise() {
+    noiseTile = makeNoiseTile(W, H);
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(noiseTile, 0, 0);
+
+    // 블러 그라디언트 오버레이
+    ctx.globalCompositeOperation = 'source-atop';
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(107,33,232,0.18)');
+    grad.addColorStop(0.5, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(107,33,232,0.22)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // glitch 수평선
+    for (let i = 0; i < 18; i++) {
+      const y = Math.random() * H;
+      const hh = Math.random() * 3 + 1;
+      ctx.globalAlpha = Math.random() * 0.3 + 0.05;
+      ctx.fillStyle = Math.random() > 0.5 ? '#a855f7' : '#06b6d4';
+      ctx.fillRect(0, y, W, hh);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ── 벗겨내기 ──
+  const BRUSH = 55;
+
+  function erase(x, y) {
+    if (isDone) return;
+    ctx.globalCompositeOperation = 'destination-out';
+    const g = ctx.createRadialGradient(x, y, 0, x, y, BRUSH);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.6, 'rgba(0,0,0,0.9)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, BRUSH, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
+    // 진행도 체크 (샘플링)
+    checkProgress();
+  }
+
+  let lastCheck = 0;
+  function checkProgress() {
+    const now = Date.now();
+    if (now - lastCheck < 300) return;
+    lastCheck = now;
+
+    const sample = ctx.getImageData(0, 0, W, H);
+    let transparent = 0;
+    for (let i = 3; i < sample.data.length; i += 4 * 8) {
+      if (sample.data[i] < 100) transparent++;
+    }
+    const ratio = transparent / (sample.data.length / 4 / 8);
+
+    if (ratio > 0.45 && !isDone) {
+      complete();
+    }
+
+    // 힌트 숨기기
+    if (ratio > 0.05) {
+      document.getElementById('hint').classList.add('hidden');
+    }
+  }
+
+  function complete() {
+    isDone = true;
+    // 캔버스 페이드아웃
+    canvas.style.transition = 'opacity 1.2s';
+    canvas.style.opacity = '0';
+    document.getElementById('glitch-overlay').style.opacity = '0';
+    document.getElementById('glitch-overlay').style.transition = 'opacity 1s';
+
+    // 프로필 카드 등장
+    setTimeout(() => {
+      document.getElementById('profile-card').classList.add('revealed');
+      document.getElementById('complete-msg').classList.add('show');
+    }, 400);
+
+    setTimeout(() => {
+      canvas.style.display = 'none';
+    }, 1500);
+  }
+
+  // ── 터치/마우스 이벤트 ──
+  function addRipple(x, y) {
+    const el = document.createElement('div');
+    el.className = 'ripple';
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  let isDown = false;
+  let lastPos = null;
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    isDown = true;
+    const t = e.touches[0];
+    const x = t.clientX, y = t.clientY;
+    erase(x, y);
+    addRipple(x, y);
+    lastPos = {x, y};
+  }, {passive: false});
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!isDown) return;
+    Array.from(e.touches).forEach(t => {
+      const x = t.clientX, y = t.clientY;
+      erase(x, y);
+      // 보간
+      if (lastPos) {
+        const dx = x - lastPos.x, dy = y - lastPos.y;
+        const dist = Math.sqrt(dx*dx+dy*dy);
+        const steps = Math.floor(dist / 12);
+        for (let i = 1; i < steps; i++) {
+          erase(lastPos.x + dx*(i/steps), lastPos.y + dy*(i/steps));
+        }
+      }
+      lastPos = {x, y};
+    });
+  }, {passive: false});
+
+  canvas.addEventListener('touchend', () => { isDown = false; lastPos = null; });
+
+  canvas.addEventListener('mousedown', e => {
+    isDown = true;
+    erase(e.clientX, e.clientY);
+    addRipple(e.clientX, e.clientY);
+    lastPos = {x: e.clientX, y: e.clientY};
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    erase(e.clientX, e.clientY);
+    lastPos = {x: e.clientX, y: e.clientY};
+  });
+  canvas.addEventListener('mouseup', () => { isDown = false; });
+
+  // ── 글리치 애니메이션 반복 ──
+  function animGlitch() {
+    if (isDone) return;
+    drawNoise();
+    setTimeout(animGlitch, 120 + Math.random() * 200);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  setTimeout(animGlitch, 600);
+})();
+</script>
+</body>
+</html>
