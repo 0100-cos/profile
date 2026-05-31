@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EDITOR — 캐릭터 설정</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+  :root {
+    --cream: #f5f0e8; --black: #0a0a0a; --grey-dark: #1a1a1a;
+    --grey-mid: #2a2a2a; --grey-line: #333333;
+    --purple: #6b21e8; --purple-light: #8b3cf7;
+    --purple-dim: rgba(107,33,232,0.15); --purple-glow: rgba(107,33,232,0.4);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--black); color:var(--cream); font-family:'Noto Sans KR',sans-serif; overscroll-behavior:none; }
+  body { display:flex; flex-direction:column; min-height:100dvh; }
+
+  header { flex-shrink:0; padding:20px 24px 16px; border-bottom:1px solid var(--grey-line); display:flex; align-items:center; justify-content:space-between; background:var(--black); position:sticky; top:0; z-index:50; }
+  .header-tag { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--purple); letter-spacing:3px; text-transform:uppercase; }
+  .header-title { font-size:18px; font-weight:700; color:var(--cream); letter-spacing:-0.5px; }
+  .header-step { font-family:'Share Tech Mono',monospace; font-size:10px; color:#555; letter-spacing:2px; }
+
+  .tab-bar { flex-shrink:0; display:flex; background:var(--grey-dark); border-bottom:1px solid var(--grey-line); }
+  .tab-btn { flex:1; padding:12px 0; background:none; border:none; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; color:#555; text-transform:uppercase; cursor:pointer; position:relative; transition:color 0.2s; }
+  .tab-btn.active { color:var(--cream); }
+  .tab-btn.active::after { content:''; position:absolute; bottom:0; left:16px; right:16px; height:2px; background:var(--purple); border-radius:1px; }
+
+  .scroll-area { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:24px 20px 110px; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  .section-card { background:var(--grey-dark); border:1px solid var(--grey-line); border-radius:12px; padding:20px; margin-bottom:16px; }
+  .section-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--purple); letter-spacing:3px; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--grey-line); }
+
+  /* 이미지 입력 방식 토글 */
+  .img-mode-toggle { display:flex; gap:6px; margin-bottom:14px; }
+  .img-mode-btn { flex:1; padding:8px; background:var(--grey-mid); border:1px solid var(--grey-line); border-radius:6px; color:#555; font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; }
+  .img-mode-btn.active { background:var(--purple-dim); border-color:var(--purple); color:var(--purple); }
+
+  .img-method { display:none; }
+  .img-method.active { display:block; }
+
+  /* 업로드 존 */
+  .img-upload-zone { aspect-ratio:3/4; border:2px dashed var(--grey-line); border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; cursor:pointer; position:relative; overflow:hidden; transition:border-color 0.2s; background:var(--grey-mid); max-height:240px; }
+  .img-upload-zone:active { border-color:var(--purple); }
+  .img-upload-zone.has-image { border-style:solid; border-color:var(--purple-light); }
+  .img-upload-zone img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:8px; }
+  .img-upload-placeholder { text-align:center; pointer-events:none; }
+  .upload-icon { width:36px; height:36px; border:2px solid var(--grey-line); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 8px; color:#555; font-size:18px; }
+  .upload-text { font-size:12px; color:#555; line-height:1.5; }
+  .img-overlay-btn { position:absolute; bottom:10px; right:10px; background:var(--purple); color:white; border:none; border-radius:6px; padding:6px 12px; font-size:11px; font-family:'Share Tech Mono',monospace; letter-spacing:1px; cursor:pointer; z-index:2; }
+  #img-file-input { display:none; }
+
+  /* URL 입력 */
+  .img-url-input-wrap { position:relative; }
+  .img-url-preview { width:100%; aspect-ratio:3/4; max-height:240px; object-fit:cover; border-radius:10px; border:1px solid var(--grey-line); display:none; margin-bottom:10px; background:var(--grey-mid); }
+  .img-url-status { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; margin-top:6px; min-height:14px; }
+  .img-url-status.ok { color:#4ade80; }
+  .img-url-status.err { color:#f87171; }
+
+  /* 이미지 호스팅 안내 */
+  .hosting-tip { background:var(--black); border:1px solid var(--grey-line); border-radius:8px; padding:12px 14px; margin-top:10px; }
+  .hosting-tip-title { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--purple); letter-spacing:2px; margin-bottom:8px; }
+  .hosting-tip-list { list-style:none; display:flex; flex-direction:column; gap:6px; }
+  .hosting-tip-list li { font-size:11px; color:#666; line-height:1.5; }
+  .hosting-tip-list li a { color:var(--purple-light); text-decoration:none; }
+  .hosting-tip-list span.tip-tag { font-family:'Share Tech Mono',monospace; font-size:8px; background:var(--purple-dim); color:var(--purple); padding:1px 5px; border-radius:3px; margin-left:4px; letter-spacing:1px; }
+
+  .field-group { margin-bottom:16px; }
+  .field-group:last-child { margin-bottom:0; }
+  .field-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--purple); letter-spacing:2.5px; text-transform:uppercase; margin-bottom:8px; display:block; }
+  .field-input { width:100%; background:var(--grey-mid); border:1px solid var(--grey-line); border-radius:8px; padding:12px 14px; color:var(--cream); font-family:'Noto Sans KR',sans-serif; font-size:14px; outline:none; transition:border-color 0.2s,box-shadow 0.2s; -webkit-appearance:none; resize:none; }
+  .field-input::placeholder { color:#444; }
+  .field-input:focus { border-color:var(--purple); box-shadow:0 0 0 3px var(--purple-dim); }
+  textarea.field-input { height:80px; line-height:1.6; }
+
+  /* 프리뷰 */
+  .preview-phone { margin:0 auto; max-width:300px; aspect-ratio:9/16; border-radius:24px; overflow:hidden; border:2px solid var(--grey-line); position:relative; background:var(--black); }
+  .preview-char-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .preview-overlay { position:absolute; inset:0; background:rgba(10,10,10,0.65); }
+  .preview-scanlines { position:absolute; inset:0; background:repeating-linear-gradient(to bottom,transparent,transparent 3px,rgba(0,0,0,0.25) 3px,rgba(0,0,0,0.25) 4px); }
+  .preview-glitch { position:absolute; inset:0; background:linear-gradient(135deg,rgba(107,33,232,0.3) 0%,transparent 50%),linear-gradient(225deg,rgba(6,182,212,0.15) 0%,transparent 50%); }
+  .preview-noise { position:absolute; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px); }
+  .preview-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-family:'Share Tech Mono',monospace; font-size:10px; color:rgba(245,240,232,0.5); letter-spacing:3px; text-align:center; white-space:nowrap; }
+  .preview-profile { position:absolute; bottom:0; left:0; right:0; padding:20px 18px 24px; background:linear-gradient(to top,rgba(0,0,0,0.96) 60%,transparent); }
+  .preview-tag { font-family:'Share Tech Mono',monospace; font-size:7px; color:var(--purple); letter-spacing:3px; margin-bottom:4px; opacity:0.7; }
+  .preview-name { font-size:18px; font-weight:700; color:var(--cream); margin-bottom:10px; }
+  .preview-divider { width:28px; height:1px; background:var(--purple); margin-bottom:10px; }
+  .preview-row { display:flex; gap:8px; margin-bottom:5px; align-items:baseline; }
+  .preview-key { font-family:'Share Tech Mono',monospace; font-size:7px; color:var(--purple); letter-spacing:2px; min-width:36px; flex-shrink:0; }
+  .preview-val { font-size:10px; color:var(--cream); opacity:0.85; word-break:break-all; }
+
+  /* URL 길이 표시 */
+  .url-length-bar { margin-top:8px; }
+  .url-length-label { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; display:flex; justify-content:space-between; margin-bottom:4px; }
+  .url-length-label span:first-child { color:#555; }
+  .url-bar-track { height:4px; background:var(--grey-line); border-radius:2px; overflow:hidden; }
+  .url-bar-fill { height:100%; border-radius:2px; transition:width 0.4s,background 0.4s; }
+
+  /* 하단 바 */
+  .bottom-bar { position:fixed; bottom:0; left:0; right:0; padding:16px 20px; background:rgba(10,10,10,0.97); border-top:1px solid var(--grey-line); display:flex; gap:10px; z-index:99; backdrop-filter:blur(12px); }
+  .btn-preview { flex:1; padding:14px; background:var(--grey-dark); border:1px solid var(--grey-line); border-radius:10px; color:var(--cream); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:border-color 0.2s; }
+  .btn-preview:active { border-color:var(--purple); }
+  .btn-share { flex:2; padding:14px; background:var(--purple); border:none; border-radius:10px; color:white; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:background 0.2s,box-shadow 0.2s; }
+  .btn-share:active { background:var(--purple-light); box-shadow:0 0 20px var(--purple-glow); }
+
+  /* 모달 */
+  .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:200; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+  .modal-backdrop.open { opacity:1; pointer-events:all; }
+  .modal-sheet { width:100%; background:var(--grey-dark); border-top:1px solid var(--grey-line); border-radius:20px 20px 0 0; padding:28px 24px 48px; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.22,1,0.36,1); }
+  .modal-backdrop.open .modal-sheet { transform:translateY(0); }
+  .modal-handle { width:36px; height:3px; background:var(--grey-line); border-radius:2px; margin:0 auto 24px; }
+  .modal-title { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--purple); letter-spacing:3px; text-transform:uppercase; margin-bottom:16px; }
+  .url-box { background:var(--black); border:1px solid var(--grey-line); border-radius:8px; padding:12px 14px; font-family:'Share Tech Mono',monospace; font-size:10px; color:#666; word-break:break-all; line-height:1.6; margin-bottom:8px; max-height:80px; overflow:hidden; }
+  .modal-actions { display:flex; gap:10px; margin-top:12px; }
+  .btn-copy { flex:1; padding:14px; background:var(--purple); border:none; border-radius:10px; color:white; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; }
+  .btn-native-share { flex:1; padding:14px; background:var(--grey-mid); border:1px solid var(--grey-line); border-radius:10px; color:var(--cream); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; }
+  .btn-copy.copied { background:#1a7a3f; }
+  .modal-close-btn { width:100%; margin-top:10px; padding:14px; background:none; border:1px solid var(--grey-line); border-radius:10px; color:#555; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; }
+
+  #toast { position:fixed; top:80px; left:50%; transform:translateX(-50%) translateY(-10px); background:var(--purple); color:white; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; padding:10px 20px; border-radius:6px; opacity:0; transition:all 0.3s; pointer-events:none; white-space:nowrap; z-index:999; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  ::-webkit-scrollbar { width:0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-tag">— CHARACTER EDITOR</div>
+    <div class="header-title">기밀 파일 작성</div>
+  </div>
+  <span class="header-step" id="progress-label">0 / 5</span>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="edit">EDIT</button>
+  <button class="tab-btn" data-tab="preview">PREVIEW</button>
+</div>
+
+<div class="scroll-area">
+
+  <!-- ── EDIT 탭 ── -->
+  <div class="tab-panel active" id="tab-edit">
+
+    <!-- 이미지 -->
+    <div class="section-card">
+      <div class="section-label">캐릭터 이미지</div>
+
+      <div class="img-mode-toggle">
+        <button class="img-mode-btn active" id="mode-url-btn" onclick="setImgMode('url')">URL 입력</button>
+        <button class="img-mode-btn" id="mode-upload-btn" onclick="setImgMode('upload')">직접 업로드</button>
+      </div>
+
+      <!-- URL 입력 모드 -->
+      <div class="img-method active" id="method-url">
+        <img class="img-url-preview" id="url-preview-img" src="" alt="">
+        <div class="field-group" style="margin-bottom:4px">
+          <label class="field-label">이미지 URL</label>
+          <input class="field-input" type="url" id="f-img-url" placeholder="https://i.imgur.com/xxxxx.jpg" oninput="handleUrlInput(this.value)" autocomplete="off">
+        </div>
+        <div class="img-url-status" id="url-status"></div>
+
+        <div class="hosting-tip">
+          <div class="hosting-tip-title">무료 이미지 호스팅 추천</div>
+          <ul class="hosting-tip-list">
+            <li>🟠 <a href="https://imgur.com" target="_blank">imgur.com</a> — 로그인 없이 업로드, 직접 링크 사용<span class="tip-tag">추천</span></li>
+            <li>🔵 <a href="https://postimages.org" target="_blank">postimages.org</a> — 직접 링크 바로 제공</li>
+            <li>💬 Discord — 채널에 이미지 올리고 링크 복사</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 업로드 모드 -->
+      <div class="img-method" id="method-upload">
+        <div class="img-upload-zone" id="img-zone" onclick="document.getElementById('img-file-input').click()">
+          <div class="img-upload-placeholder" id="img-placeholder">
+            <div class="upload-icon">+</div>
+            <div class="upload-text">이미지를 탭해서 업로드<br><span style="font-size:10px;color:#3a3a3a">JPG, PNG, WEBP</span></div>
+          </div>
+          <img id="img-preview-tag" src="" alt="" style="display:none">
+          <button class="img-overlay-btn" id="img-change-btn" style="display:none" onclick="event.stopPropagation();document.getElementById('img-file-input').click()">변경</button>
+        </div>
+        <input type="file" id="img-file-input" accept="image/*" onchange="handleImageUpload(this)">
+        <p style="font-size:10px;color:#555;margin-top:8px;font-family:'Share Tech Mono',monospace;letter-spacing:1px;line-height:1.6;">⚠ 업로드 모드는 이미지를 URL에 직접 포함합니다.<br>URL이 매우 길어질 수 있어요. URL 입력 모드를 권장합니다.</p>
+      </div>
+    </div>
+
+    <!-- 프로필 -->
+    <div class="section-card">
+      <div class="section-label">캐릭터 프로필</div>
+      <div class="field-group">
+        <label class="field-label" for="f-name">이름</label>
+        <input class="field-input" type="text" id="f-name" placeholder="캐릭터 이름" maxlength="30" oninput="updateProgress()">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="f-affil">소속</label>
+        <input class="field-input" type="text" id="f-affil" placeholder="소속 조직 또는 팀" maxlength="40" oninput="updateProgress()">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="f-code">코드네임</label>
+        <input class="field-input" type="text" id="f-code" placeholder="비밀 코드명" maxlength="30" oninput="updateProgress()">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="f-trait">특징</label>
+        <textarea class="field-input" id="f-trait" placeholder="캐릭터의 주요 특징이나 능력" maxlength="100" oninput="updateProgress()"></textarea>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── PREVIEW 탭 ── -->
+  <div class="tab-panel" id="tab-preview">
+    <p style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#555;letter-spacing:2px;margin-bottom:14px;">터치하면 이 노이즈가 벗겨집니다</p>
+
+    <div class="preview-phone">
+      <img class="preview-char-img" id="prev-img" src="" alt="" style="display:none">
+      <div class="preview-overlay"></div>
+      <div class="preview-scanlines"></div>
+      <div class="preview-glitch"></div>
+      <div class="preview-noise"></div>
+      <div class="preview-label" id="prev-label">[ CLASSIFIED ]</div>
+      <div class="preview-profile">
+        <div class="preview-tag">— CLASSIFIED FILE —</div>
+        <div class="preview-name" id="prev-name">???</div>
+        <div class="preview-divider"></div>
+        <div class="preview-row"><span class="preview-key">AFFIL</span><span class="preview-val" id="prev-affil">—</span></div>
+        <div class="preview-row"><span class="preview-key">CODE</span><span class="preview-val" id="prev-code">—</span></div>
+        <div class="preview-row"><span class="preview-key">TRAIT</span><span class="preview-val" id="prev-trait">—</span></div>
+      </div>
+    </div>
+
+    <!-- URL 길이 표시기 -->
+    <div class="url-length-bar" style="margin-top:20px;">
+      <div class="url-length-label">
+        <span>예상 URL 길이</span>
+        <span id="url-len-text" style="color:#555">—</span>
+      </div>
+      <div class="url-bar-track"><div class="url-bar-fill" id="url-bar-fill" style="width:0%;background:var(--purple)"></div></div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#444;margin-top:6px;letter-spacing:1px;" id="url-len-advice"></p>
+    </div>
+  </div>
+
+</div>
+
+<!-- 하단 바 -->
+<div class="bottom-bar">
+  <button class="btn-preview" onclick="switchTab('preview')">미리보기</button>
+  <button class="btn-share" onclick="openShareModal()">공유 링크 생성 →</button>
+</div>
+
+<!-- 공유 모달 -->
+<div class="modal-backdrop" id="share-modal" onclick="handleModalBg(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">[ 공유 링크 ]</div>
+    <div class="url-box" id="share-url-box">링크를 생성 중...</div>
+    <div class="modal-actions">
+      <button class="btn-copy" id="copy-btn" onclick="copyUrl()">링크 복사</button>
+      <button class="btn-native-share" onclick="nativeShare()">공유하기</button>
+    </div>
+    <button class="modal-close-btn" onclick="closeModal()">닫기</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── 상태 ──
+let imgBase64 = '';      // 업로드 모드
+let imgUrl    = '';      // URL 모드
+let imgMode   = 'url';  // 'url' | 'upload'
+let currentShareUrl = '';
+
+// ── 이미지 모드 전환 ──
+function setImgMode(mode) {
+  imgMode = mode;
+  document.getElementById('mode-url-btn').classList.toggle('active', mode==='url');
+  document.getElementById('mode-upload-btn').classList.toggle('active', mode==='upload');
+  document.getElementById('method-url').classList.toggle('active', mode==='url');
+  document.getElementById('method-upload').classList.toggle('active', mode==='upload');
+  updateProgress();
+}
+
+// ── URL 입력 처리 ──
+let urlDebounce;
+function handleUrlInput(val) {
+  clearTimeout(urlDebounce);
+  imgUrl = val.trim();
+  const status = document.getElementById('url-status');
+  const prevImg = document.getElementById('url-preview-img');
+  if (!imgUrl) { status.textContent=''; prevImg.style.display='none'; updateProgress(); return; }
+  status.textContent = '확인 중...'; status.className = 'img-url-status';
+  urlDebounce = setTimeout(() => {
+    const t = new Image();
+    t.onload = () => {
+      prevImg.src = imgUrl; prevImg.style.display = 'block';
+      status.textContent = '✓ 이미지 확인됨'; status.className = 'img-url-status ok';
+      updateProgress();
+    };
+    t.onerror = () => {
+      prevImg.style.display = 'none';
+      status.textContent = '✗ 이미지를 불러올 수 없어요 (CORS 또는 잘못된 URL)';
+      status.className = 'img-url-status err';
+      updateProgress();
+    };
+    t.src = imgUrl;
+  }, 600);
+}
+
+// ── 파일 업로드 ──
+function handleImageUpload(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 700; let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      imgBase64 = canvas.toDataURL('image/jpeg', 0.78);
+      const tag = document.getElementById('img-preview-tag');
+      tag.src=imgBase64; tag.style.display='block';
+      document.getElementById('img-placeholder').style.display='none';
+      document.getElementById('img-change-btn').style.display='block';
+      document.getElementById('img-zone').classList.add('has-image');
+      updateProgress();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── 진행도 ──
+function getActiveImg() {
+  if(imgMode==='url') return imgUrl;
+  return imgBase64;
+}
+
+function updateProgress() {
+  let c=0;
+  if(getActiveImg()) c++;
+  if(document.getElementById('f-name').value.trim()) c++;
+  if(document.getElementById('f-affil').value.trim()) c++;
+  if(document.getElementById('f-code').value.trim()) c++;
+  if(document.getElementById('f-trait').value.trim()) c++;
+  document.getElementById('progress-label').textContent = c+' / 5';
+}
+
+// ── 탭 전환 ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+  if(tab==='preview') updatePreview();
+}
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+
+// ── 미리보기 업데이트 ──
+function updatePreview() {
+  const name  = document.getElementById('f-name').value.trim()||'???';
+  const affil = document.getElementById('f-affil').value.trim()||'—';
+  const code  = document.getElementById('f-code').value.trim()||'—';
+  const trait = document.getElementById('f-trait').value.trim()||'—';
+  document.getElementById('prev-name').textContent  = name;
+  document.getElementById('prev-affil').textContent = affil;
+  document.getElementById('prev-code').textContent  = code;
+  document.getElementById('prev-trait').textContent = trait;
+
+  const img = getActiveImg();
+  const pi = document.getElementById('prev-img');
+  if(img){ pi.src=img; pi.style.display='block'; document.getElementById('prev-label').style.display='none'; }
+  else   { pi.style.display='none'; document.getElementById('prev-label').style.display='block'; }
+
+  // URL 길이 표시
+  try {
+    const url = buildShareUrl();
+    const len = url.length;
+    const MAX_SAFE = 2000;
+    const pct = Math.min(len/MAX_SAFE*100, 100);
+    document.getElementById('url-len-text').textContent = len.toLocaleString()+' chars';
+    const fill = document.getElementById('url-bar-fill');
+    fill.style.width = pct+'%';
+    fill.style.background = pct<50 ? '#4ade80' : pct<80 ? '#facc15' : '#f87171';
+    const adv = document.getElementById('url-len-advice');
+    if(pct<50)      adv.textContent = '✓ 공유에 적합한 길이';
+    else if(pct<80) adv.textContent = '△ 일부 플랫폼에서 잘릴 수 있음';
+    else            adv.textContent = '✗ URL이 너무 김 — 이미지를 URL 모드로 변경하세요';
+  } catch(e) {}
+}
+
+// ── 링크 생성 ──
+function buildShareUrl() {
+  const data = {
+    img:   getActiveImg(),
+    name:  document.getElementById('f-name').value.trim(),
+    affil: document.getElementById('f-affil').value.trim(),
+    code:  document.getElementById('f-code').value.trim(),
+    trait: document.getElementById('f-trait').value.trim(),
+  };
+  // LZString 없이 간단 압축: JSON → URI encode → base64
+  const json = JSON.stringify(data);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  const base = location.href.replace('editor.html','viewer.html');
+  return base+'?d='+encoded;
+}
+
+// ── 공유 모달 ──
+function openShareModal() {
+  const modal = document.getElementById('share-modal');
+  modal.classList.add('open');
+  const box = document.getElementById('share-url-box');
+  const copyBtn = document.getElementById('copy-btn');
+  try {
+    currentShareUrl = buildShareUrl();
+    box.textContent = currentShareUrl;
+    copyBtn.disabled = false;
+  } catch(e) {
+    box.textContent = '⚠ 링크 생성 실패. 이미지 크기를 줄여보세요.';
+    currentShareUrl = '';
+    copyBtn.disabled = true;
+  }
+}
+
+function closeModal() { document.getElementById('share-modal').classList.remove('open'); }
+function handleModalBg(e) { if(e.target===document.getElementById('share-modal')) closeModal(); }
+
+function copyUrl() {
+  if(!currentShareUrl) return;
+  navigator.clipboard.writeText(currentShareUrl).then(()=>{
+    const btn=document.getElementById('copy-btn');
+    btn.textContent='복사 완료 ✓'; btn.classList.add('copied');
+    showToast('링크가 복사됐어요!');
+    setTimeout(()=>{ btn.textContent='링크 복사'; btn.classList.remove('copied'); },2000);
+  }).catch(()=>{ legacyCopy(currentShareUrl); showToast('링크가 복사됐어요!'); });
+}
+
+function legacyCopy(text) {
+  const ta=document.createElement('textarea'); ta.value=text;
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+}
+
+function nativeShare() {
+  if(!currentShareUrl) return;
+  if(navigator.share) navigator.share({title:'기밀 캐릭터 파일',text:'화면을 터치해서 캐릭터를 공개해보세요 👆',url:currentShareUrl}).catch(()=>{});
+  else copyUrl();
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+</script>
+</body>
+</html>
